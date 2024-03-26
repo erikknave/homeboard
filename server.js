@@ -1,36 +1,82 @@
-//Need to document this file!
+/**
+ * Main server setup and socket event handlers for the home automation system.
+ * This file configures the server, sets up socket connections, and handles various
+ * events such as device control, weather updates, calendar events, and more.
+ */
+/**
+ * Express module for handling HTTP server functionalities.
+ */
 var express = require("express");
+/**
+ * CORS module to enable Cross-Origin Resource Sharing.
+ */
 const cors = require("cors");
+/**
+ * Request module for making HTTP requests.
+ */
 const request = require("request");
+/**
+ * Child_process module for executing shell commands.
+ */
 const { exec } = require("child_process");
+/**
+ * Initial configuration loaded from a sample file. Custom config is loaded if available.
+ */
 var config = require("./config.sample");
 
+/**
+ * File system module for handling file operations.
+ */
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
   //Load custom config file
   config = require("./config");
 }
 
+/**
+ * Sonos module for controlling Sonos speakers.
+ */
 var Sonos = require("sonos");
 var sonos = null;
 
+/**
+ * Netatmo module for interacting with Netatmo weather stations.
+ */
 var netatmo = require("netatmo");
 var netatmoapi = null;
 if (config.netatmo.client_id) {
   netatmoapi = new netatmo(config.netatmo);
 }
 
+/**
+ * Yahoo Finance module for fetching financial data.
+ */
 var yahooFinance = require("yahoo-finance");
+/**
+ * NewsAPI module for fetching news headlines.
+ */
 var NewsAPI = require("newsapi");
 var newsapi = null;
 if (config.newsapi.key) {
   newsapi = new NewsAPI(config.newsapi.key);
 }
 
+/**
+ * Node-ical module for parsing iCal calendar data.
+ */
 const ical = require("node-ical");
+/**
+ * Moment-timezone module for handling dates and times with timezone support.
+ */
 const moment = require("moment-timezone");
 
+/**
+ * Initialize the express application.
+ */
 var app = express();
+/**
+ * Start the server and listen on the configured port.
+ */
 const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
@@ -69,6 +115,9 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
     });
 });
 
+/**
+ * Initialize socket.io with the server instance for real-time communication.
+ */
 const io = require("socket.io")(server);
 io.set("origins", [
   "http://homeboard.local:8080",
@@ -387,6 +436,10 @@ io.on("connection", function (socket) {
 });
 
 // Get weather token
+/**
+ * Function to fetch the Netatmo public access token.
+ * @param {Function} callback - The callback function to execute after fetching the token.
+ */
 var getWeatherToken = function (callback) {
   //Fetch Netatmo public access token
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
@@ -409,12 +462,22 @@ var getWeatherToken = function (callback) {
 };
 
 // Get weather station data
+/**
+ * Callback function to handle the response from fetching weather station data.
+ * @param {Error} err - The error object, if any.
+ * @param {Array} devices - The list of devices from the weather station.
+ */
 var getStationsData = function (err, devices) {
   devices.forEach(function (device) {
     console.log("Weather update");
     io.emit("WEATHER", parseStationData(device));
   });
 };
+/**
+ * Parses the data from a single weather station device.
+ * @param {Object} device - The device object containing weather data.
+ * @return {Object} The parsed weather data.
+ */
 var parseStationData = function (device) {
   var json_data = {};
   if (
@@ -441,6 +504,9 @@ if (netatmoapi) {
 }
 
 // Motion sensor to enable screen
+/**
+ * Rpi-gpio module for interacting with Raspberry Pi GPIO pins.
+ */
 var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
@@ -519,10 +585,16 @@ gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 // 	}
 // }).catch(err => { console.log('Hue error occurred %j', err) })
 
+/**
+ * Tibber-api module for interacting with the Tibber energy platform.
+ */
 const Tibber = require("tibber-api");
 const tibberQuery = new Tibber.TibberQuery(config.tibber1);
 const tibberQuery2 = new Tibber.TibberQuery(config.tibber2);
 
+/**
+ * The path to the directory serving the web content.
+ */
 let webpath = "www";
 if (fs.existsSync(webpath)) {
   var connect = require("connect");
