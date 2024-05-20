@@ -1,41 +1,41 @@
-//Need to document this file!
-var express = require("express");
-const cors = require("cors");
-const request = require("request");
-const { exec } = require("child_process");
-var config = require("./config.sample");
+// This file sets up a server using Express and integrates various APIs and services like Sonos, Netatmo, and Yahoo Finance.
+// Load the express module to create and manage the HTTP server.
+// Load the cors middleware to enable CORS with various options.
+// Load the request module to make HTTP calls to external services.
+// Destructure exec from child_process module to run shell commands from Node.js.
+// Load the default configuration from the sample config file.
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it if present.
   config = require("./config");
 }
 
-var Sonos = require("sonos");
+// Load the Sonos module to interact with Sonos speakers.
 var sonos = null;
 
-var netatmo = require("netatmo");
+// Load the netatmo module to interact with Netatmo devices.
 var netatmoapi = null;
 if (config.netatmo.client_id) {
   netatmoapi = new netatmo(config.netatmo);
 }
 
-var yahooFinance = require("yahoo-finance");
-var NewsAPI = require("newsapi");
+// Load the yahoo-finance module to fetch financial data.
+// Load the NewsAPI module to fetch news articles.
 var newsapi = null;
 if (config.newsapi.key) {
   newsapi = new NewsAPI(config.newsapi.key);
 }
 
-const ical = require("node-ical");
-const moment = require("moment-timezone");
+// Load the node-ical module to parse iCalendar data.
+// Load the moment-timezone module to manipulate dates with timezone support.
 
-var app = express();
-const server = app.listen(config.web.socket, function () {
+// Initialize the express application.
+// Start the server listening on the port specified in the configuration.
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
-//Discover sonos kitchen device ip
+// Discover Sonos devices in the network and set up event listeners for various Sonos events.
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -69,14 +69,14 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
     });
 });
 
-const io = require("socket.io")(server);
+// Initialize socket.io to enable real-time bidirectional event-based communication.
 io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]); // Set allowed origins for socket.io connections, including a temporary static IP for development purposes.
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Socket event listeners for various functionalities like playing music, fetching news, and controlling devices.
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -137,7 +137,7 @@ io.on("connection", function (socket) {
   });
   socket.on("restart", function () {
     console.log("Restart display manager");
-    // exec('sudo systemctl restart display-manager', (error, stdout, stderr) => {
+    // Restart the server using pm2 instead of the display manager, handling errors and logging output.
     exec("pm2 restart server", (error, stdout, stderr) => {
       if (error) {
         console.log(`error: ${error.message}`);
@@ -154,7 +154,7 @@ io.on("connection", function (socket) {
   });
   socket.on("sleep", function () {
     console.log("Sleep screen");
-    // exec('/usr/bin/tvservice -p', (error, stdout, stderr) => {
+    // Command to put the display to sleep, handling errors and logging output.
     exec(
       "export DISPLAY=:0; sleep 1; xset -display :0.0 s activate; /usr/bin/tvservice -p",
       (error, stdout, stderr) => {
@@ -232,7 +232,7 @@ io.on("connection", function (socket) {
     sonos
       .play(uri)
       .then((success) => {
-        // console.log('Playing uri')
+        // Log the success of playing a URI on Sonos after setting the queue and play mode.
       })
       .catch((err) => {
         console.log("Error occurred %j", err);
@@ -243,7 +243,7 @@ io.on("connection", function (socket) {
     sonos
       .playTuneinRadio(station[0], station[1])
       .then((success) => {
-        // console.log('Playing radio')
+        // Log the success of playing a radio station on Sonos, handling errors.
       })
       .catch((err) => {
         console.log("Error occurred %j", err);
@@ -386,9 +386,9 @@ io.on("connection", function (socket) {
   });
 });
 
-// Get weather token
+// Function to fetch a public access token for Netatmo weather map.
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
+  // Make an HTTP request to Netatmo weather map to retrieve the access token, handling errors.
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -408,7 +408,7 @@ var getWeatherToken = function (callback) {
   });
 };
 
-// Get weather station data
+// Function to process and emit weather station data received from Netatmo.
 var getStationsData = function (err, devices) {
   devices.forEach(function (device) {
     console.log("Weather update");
@@ -440,12 +440,12 @@ if (netatmoapi) {
   netatmoapi.on("get-stationsdata", getStationsData);
 }
 
-// Motion sensor to enable screen
+// Set up GPIO to listen for motion sensor changes and trigger screen wake-up commands.
 var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
 gpio.on("change", function (channel, value) {
-  // Test by turning down screensaver to few sec
+  // Debugging code to adjust screensaver settings for testing motion sensor functionality.
   // export DISPLAY=:0
   // xset s 2
   //console.log('Channel ' + channel + ' value is now ' + value +' total ' + motion_value);
@@ -462,7 +462,7 @@ gpio.on("change", function (channel, value) {
 });
 gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 
-// var setLights = function(mode){
+// Function to control light settings based on the mode, currently commented out.
 // 	if (mode == 'tv'){
 
 // 	}
@@ -485,7 +485,7 @@ gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 // 	})
 // }
 
-// const v3 = require('node-hue-api').v3
+// Load the node-hue-api module to interact with Philips Hue lights, currently commented out.
 // 	, discovery = v3.discovery
 // 	, hueApi = v3.api
 // 	, GroupLightState = v3.lightStates.GroupLightState
@@ -519,14 +519,14 @@ gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 // 	}
 // }).catch(err => { console.log('Hue error occurred %j', err) })
 
-const Tibber = require("tibber-api");
+// Load the tibber-api module to interact with the Tibber energy service.
 const tibberQuery = new Tibber.TibberQuery(config.tibber1);
 const tibberQuery2 = new Tibber.TibberQuery(config.tibber2);
 
-let webpath = "www";
+// Define the path to serve static files from.
 if (fs.existsSync(webpath)) {
-  var connect = require("connect");
-  var serveStatic = require("serve-static");
+  // Load the connect module to use middleware for serving static files.
+  // Load the serve-static module to serve static files.
   connect()
     .use(serveStatic(webpath))
     .listen(config.web.port, function () {
