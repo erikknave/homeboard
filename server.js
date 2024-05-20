@@ -1,4 +1,4 @@
-//Need to document this file!
+// This file sets up a server using Express and integrates various APIs and services like Sonos, Netatmo, and Yahoo Finance.
 var express = require("express");
 const cors = require("cors");
 const request = require("request");
@@ -7,7 +7,8 @@ var config = require("./config.sample");
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it to override the default settings.
+if (fs.existsSync('./config.js')) {
   config = require("./config");
 }
 
@@ -35,7 +36,8 @@ const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
-//Discover sonos kitchen device ip
+// Discover Sonos devices in the network, specifically looking for devices in the kitchen based on configuration.
+Sonos.DeviceDiscovery().once('DeviceAvailable', (device) => {
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -74,9 +76,11 @@ io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]); // Set allowed origins for socket connections, including a temporary static IP for development purposes.
+io.set('origins', [
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Handle new socket connections, potentially logging the socket ID for debugging.
+io.on('connection', function (socket) {
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -381,14 +385,16 @@ io.on("connection", function (socket) {
           ") }    }  } }"
       )
       .then((res) => {
-        // console.log(JSON.stringify(res, null, 2))
+        // Log the response from setting the thermostat state in a readable format for debugging.
+tibberQuery2.query(
       });
   });
 });
 
 // Get weather token
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
+  // Function to fetch the public access token from Netatmo's weather map service.
+var getWeatherToken = function (callback) {
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -429,7 +435,8 @@ var parseStationData = function (device) {
         json_data.outdoor = module.dashboard_data;
       }
     });
-    // console.log(json_data)
+    // Parse the station data received from Netatmo devices and return it in a structured JSON format.
+var parseStationData = function (device) {
     return json_data;
   } else {
     console.log("Invalid weather data");
@@ -445,7 +452,8 @@ var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
 gpio.on("change", function (channel, value) {
-  // Test by turning down screensaver to few sec
+  // GPIO event handler to detect motion and potentially wake up the screen by simulating mouse movement.
+gpio.on('change', function (channel, value) {
   // export DISPLAY=:0
   // xset s 2
   //console.log('Channel ' + channel + ' value is now ' + value +' total ' + motion_value);
