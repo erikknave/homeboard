@@ -1,4 +1,9 @@
-//Need to document this file!
+// This file sets up and configures the server for a home automation system using various APIs and local configurations.
+// Import necessary modules and initialize the express application.
+// `cors` for handling Cross-Origin Resource Sharing.
+// `request` for making HTTP requests.
+// `exec` from `child_process` for executing shell commands.
+// Load default configuration from `config.sample.js`.
 var express = require("express");
 const cors = require("cors");
 const request = require("request");
@@ -6,8 +11,8 @@ const { exec } = require("child_process");
 var config = require("./config.sample");
 
 const fs = require("fs");
+// Check if a custom configuration file exists and load it if present.
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
   config = require("./config");
 }
 
@@ -31,11 +36,13 @@ const ical = require("node-ical");
 const moment = require("moment-timezone");
 
 var app = express();
+// Start the server listening on the port specified in the configuration.
+// Log a message to the console when the server is successfully listening.
 const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
-//Discover sonos kitchen device ip
+// Discover Sonos devices in the network and connect to the kitchen device as specified in the configuration.
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -69,12 +76,14 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
     });
 });
 
+// Set up Socket.IO for real-time communication between the server and clients.
+// Configure allowed origins to restrict connections to specific hosts.
 const io = require("socket.io")(server);
 io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]);
 io.on("connection", function (socket) {
   // console.log(socket.id)
   if (sonos) {
@@ -386,9 +395,9 @@ io.on("connection", function (socket) {
   });
 });
 
-// Get weather token
+// Define a function to fetch the Netatmo public access token from the weather map API.
+// This token is used for subsequent API requests to Netatmo.
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -408,7 +417,8 @@ var getWeatherToken = function (callback) {
   });
 };
 
-// Get weather station data
+// Define a function to handle the data received from Netatmo weather stations.
+// This function emits the parsed weather data to connected clients via Socket.IO.
 var getStationsData = function (err, devices) {
   devices.forEach(function (device) {
     console.log("Weather update");
@@ -440,7 +450,8 @@ if (netatmoapi) {
   netatmoapi.on("get-stationsdata", getStationsData);
 }
 
-// Motion sensor to enable screen
+// Set up GPIO to read from a motion sensor and trigger actions based on motion detection.
+// This is used to activate the screen when motion is detected.
 var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
