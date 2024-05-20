@@ -1,41 +1,39 @@
-//Need to document this file!
-var express = require("express");
-const cors = require("cors");
-const request = require("request");
-const { exec } = require("child_process");
-var config = require("./config.sample");
+// This file sets up a server using Express and integrates various APIs and services like Sonos, Netatmo, and Yahoo Finance.
+// Load the express module to create and manage the HTTP server.
+// Load the cors middleware to enable CORS with various options.
+// Load the request module to make HTTP calls to external services.
+// Destructure exec from child_process module to run shell commands from Node.js.
+// Load the default configuration from the sample file.
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it if present.
   config = require("./config");
 }
 
-var Sonos = require("sonos");
+// Load the Sonos module to interact with Sonos speakers.
 var sonos = null;
 
-var netatmo = require("netatmo");
+// Load the netatmo module to interact with Netatmo devices.
 var netatmoapi = null;
 if (config.netatmo.client_id) {
   netatmoapi = new netatmo(config.netatmo);
 }
 
-var yahooFinance = require("yahoo-finance");
-var NewsAPI = require("newsapi");
+// Load the yahoo-finance module to fetch financial data.
+// Load the NewsAPI module to fetch news articles.
 var newsapi = null;
 if (config.newsapi.key) {
   newsapi = new NewsAPI(config.newsapi.key);
 }
 
-const ical = require("node-ical");
-const moment = require("moment-timezone");
+// Load the node-ical module to parse iCalendar data.
+// Load the moment-timezone module to manipulate and display dates and times in different timezones.
 
-var app = express();
-const server = app.listen(config.web.socket, function () {
-  console.log("Server listening on port " + config.web.socket + ".");
-});
+// Initialize the express application.
+// Start the server listening on the port specified in the configuration. Log a message to the console once the server is ready.
 
-//Discover sonos kitchen device ip
+// Discover Sonos devices in the network and set up event listeners for track changes, play state, and volume changes.
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -50,12 +48,12 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
           sonos.setSpotifyRegion(config.sonos.region);
 
           sonos.on("CurrentTrack", (track) => {
-            // console.log('Sonos Track changed to %s by %s', track)
+            // Log the current track information from Sonos (commented out).
             io.emit("SONOS_TRACK", track);
           });
 
           sonos.on("PlayState", (state) => {
-            // console.log('Sonos state changed to %s.', state)
+            // Log the play state of the Sonos device (commented out).
             io.emit("SONOS_STATE", state);
           });
           sonos.on("Volume", (volume) => {
@@ -69,14 +67,14 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
     });
 });
 
-const io = require("socket.io")(server);
+// Initialize socket.io to enable real-time bidirectional event-based communication.
 io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
 ]); //erik: temporarily set to static ip on macbook-pro
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Log the socket ID for debugging purposes (commented out).
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -232,7 +230,7 @@ io.on("connection", function (socket) {
     sonos
       .play(uri)
       .then((success) => {
-        // console.log('Playing uri')
+        // Log the URI that is currently being played on Sonos (commented out).
       })
       .catch((err) => {
         console.log("Error occurred %j", err);
@@ -243,7 +241,7 @@ io.on("connection", function (socket) {
     sonos
       .playTuneinRadio(station[0], station[1])
       .then((success) => {
-        // console.log('Playing radio')
+        // Log the radio station that is currently being played on Sonos (commented out).
       })
       .catch((err) => {
         console.log("Error occurred %j", err);
@@ -381,14 +379,14 @@ io.on("connection", function (socket) {
           ") }    }  } }"
       )
       .then((res) => {
-        // console.log(JSON.stringify(res, null, 2))
+        // Log the response from the thermostat mutation in a readable format (commented out).
       });
   });
 });
 
 // Get weather token
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
+  // Function to fetch the public access token from Netatmo's weather map service.
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -429,7 +427,7 @@ var parseStationData = function (device) {
         json_data.outdoor = module.dashboard_data;
       }
     });
-    // console.log(json_data)
+    // Log the JSON data parsed from the weather station (commented out).
     return json_data;
   } else {
     console.log("Invalid weather data");
@@ -445,10 +443,7 @@ var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
 gpio.on("change", function (channel, value) {
-  // Test by turning down screensaver to few sec
-  // export DISPLAY=:0
-  // xset s 2
-  //console.log('Channel ' + channel + ' value is now ' + value +' total ' + motion_value);
+  // Code for testing the motion sensor by adjusting the screensaver settings and logging the motion values (commented out).
   if (Math.abs(motion_value) > 10) {
     exec("export DISPLAY=:0 && xdotool mousemove 1 2");
     motion_value = 0;
