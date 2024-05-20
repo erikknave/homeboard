@@ -1,41 +1,56 @@
-//Need to document this file!
+// This file sets up and configures the server for a home automation system using various APIs and hardware interactions.
+// Load the express module to help build the HTTP server.
 var express = require("express");
+// Load the cors middleware to enable CORS with various options.
 const cors = require("cors");
+// Load the request module to make HTTP calls to external services.
 const request = require("request");
+// Destructure exec from child_process module for running system commands.
 const { exec } = require("child_process");
+// Load the default configuration from the sample config file.
 var config = require("./config.sample");
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it to override default settings.
+if (fs.existsSync("./config.js")) {
   config = require("./config");
 }
 
+// Load the Sonos module to interact with Sonos speakers on the network.
 var Sonos = require("sonos");
 var sonos = null;
 
+// Load the netatmo module to interact with Netatmo weather stations.
 var netatmo = require("netatmo");
 var netatmoapi = null;
 if (config.netatmo.client_id) {
   netatmoapi = new netatmo(config.netatmo);
 }
 
+// Load the yahoo-finance module to fetch financial data for various symbols.
 var yahooFinance = require("yahoo-finance");
+// Load the NewsAPI module to fetch news headlines from various sources.
 var NewsAPI = require("newsapi");
 var newsapi = null;
 if (config.newsapi.key) {
   newsapi = new NewsAPI(config.newsapi.key);
 }
 
+// Load the node-ical module to parse iCal format calendar data.
 const ical = require("node-ical");
+// Load the moment-timezone module to manipulate and display dates and times in different timezones.
 const moment = require("moment-timezone");
 
+// Initialize the express application.
 var app = express();
+// Start the server listening on the port specified in the configuration.
 const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
-//Discover sonos kitchen device ip
+// Discover Sonos devices in the network and set up event listeners for various Sonos events.
+Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -69,14 +84,17 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
     });
 });
 
+// Load and initialize socket.io for real-time bidirectional event-based communication.
 const io = require("socket.io")(server);
 io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]); // Set allowed origins for socket.io connections, including a temporary static IP for development purposes.
+io.set("origins", [
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Event listener for new socket connections. Logs the socket ID and sets up various event listeners.
+io.on("connection", function (socket) {
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -386,7 +404,8 @@ io.on("connection", function (socket) {
   });
 });
 
-// Get weather token
+// Function to fetch a public access token from Netatmo for weather data access.
+var getWeatherToken = function (callback) {
 var getWeatherToken = function (callback) {
   //Fetch Netatmo public access token
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
@@ -408,7 +427,8 @@ var getWeatherToken = function (callback) {
   });
 };
 
-// Get weather station data
+// Function to process and emit weather station data received from Netatmo devices.
+var getStationsData = function (err, devices) {
 var getStationsData = function (err, devices) {
   devices.forEach(function (device) {
     console.log("Weather update");
@@ -440,7 +460,8 @@ if (netatmoapi) {
   netatmoapi.on("get-stationsdata", getStationsData);
 }
 
-// Motion sensor to enable screen
+// Set up GPIO to listen for motion sensor changes and trigger screen wake-up or sleep.
+var gpio = require("rpi-gpio");
 var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
@@ -462,6 +483,7 @@ gpio.on("change", function (channel, value) {
 });
 gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 
+// Function to control light settings based on the mode provided. Currently commented out and needs implementation.
 // var setLights = function(mode){
 // 	if (mode == 'tv'){
 
@@ -485,6 +507,7 @@ gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 // 	})
 // }
 
+// Load the node-hue-api module to interact with Philips Hue lights. This section is commented out and requires configuration.
 // const v3 = require('node-hue-api').v3
 // 	, discovery = v3.discovery
 // 	, hueApi = v3.api
@@ -519,10 +542,12 @@ gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 // 	}
 // }).catch(err => { console.log('Hue error occurred %j', err) })
 
+// Load the tibber-api module to interact with the Tibber energy service.
 const Tibber = require("tibber-api");
 const tibberQuery = new Tibber.TibberQuery(config.tibber1);
 const tibberQuery2 = new Tibber.TibberQuery(config.tibber2);
 
+// Define the path to the web directory and serve static files from it if it exists.
 let webpath = "www";
 if (fs.existsSync(webpath)) {
   var connect = require("connect");
