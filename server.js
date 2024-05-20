@@ -1,4 +1,4 @@
-//Need to document this file!
+// This file sets up a server using Express and integrates various APIs and services like Sonos, Netatmo, and Yahoo Finance.
 var express = require("express");
 const cors = require("cors");
 const request = require("request");
@@ -7,7 +7,8 @@ var config = require("./config.sample");
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it to override the default settings.
+
   config = require("./config");
 }
 
@@ -35,7 +36,8 @@ const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
-//Discover sonos kitchen device ip
+// Initiate discovery of Sonos devices in the network, specifically looking for devices in the kitchen as configured.
+
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -74,9 +76,11 @@ io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]); // Set allowed origins for socket connections. This configuration is temporary and specific to a development environment.
+
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Log the unique socket ID to the console when a new connection is made. This line is commented out by default.
+
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -381,14 +385,16 @@ io.on("connection", function (socket) {
           ") }    }  } }"
       )
       .then((res) => {
-        // console.log(JSON.stringify(res, null, 2))
+        // Log the response from setting the thermostat state in a formatted JSON structure. This line is commented out by default.
+
       });
   });
 });
 
 // Get weather token
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
+  // Attempt to fetch a public access token from Netatmo's weather map service. This function is used to authenticate subsequent API requests.
+
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -445,7 +451,8 @@ var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
 gpio.on("change", function (channel, value) {
-  // Test by turning down screensaver to few sec
+  // This block is used for testing the motion sensor by setting the screensaver timeout to a few seconds. These lines are commented out by default.
+
   // export DISPLAY=:0
   // xset s 2
   //console.log('Channel ' + channel + ' value is now ' + value +' total ' + motion_value);
