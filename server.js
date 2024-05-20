@@ -1,4 +1,4 @@
-//Need to document this file!
+// This file sets up a server using Express and integrates various APIs and services like Sonos, Netatmo, and Yahoo Finance.
 var express = require("express");
 const cors = require("cors");
 const request = require("request");
@@ -7,7 +7,8 @@ var config = require("./config.sample");
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it, overriding the default configuration.
+
   config = require("./config");
 }
 
@@ -35,7 +36,8 @@ const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
-//Discover sonos kitchen device ip
+// Discover Sonos devices on the network and connect to the kitchen device as specified in the configuration.
+
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
   sonos
@@ -74,9 +76,11 @@ io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]); // Set allowed origins for socket.io connections. This is temporarily set to static IPs for development purposes.
+
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Log the socket ID for debugging purposes. This line is commented out to disable logging in production.
+
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -381,14 +385,16 @@ io.on("connection", function (socket) {
           ") }    }  } }"
       )
       .then((res) => {
-        // console.log(JSON.stringify(res, null, 2))
+        // Log the response from setting the thermostat. This line is commented out to disable logging in production.
+
       });
   });
 });
 
 // Get weather token
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
+  // Fetch the public access token from Netatmo's weather map service. This function is used to authenticate API requests.
+
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -429,7 +435,8 @@ var parseStationData = function (device) {
         json_data.outdoor = module.dashboard_data;
       }
     });
-    // console.log(json_data)
+    // Log the JSON data for weather updates. This line is commented out to disable logging in production.
+
     return json_data;
   } else {
     console.log("Invalid weather data");
@@ -445,9 +452,11 @@ var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
 gpio.on("change", function (channel, value) {
-  // Test by turning down screensaver to few sec
+  // Test the motion sensor by setting the screensaver timeout to a few seconds. This line is commented out to disable logging in production.
+
   // export DISPLAY=:0
-  // xset s 2
+  // Set the X server screensaver timeout to 2 seconds. This line is commented out to disable logging in production.
+
   //console.log('Channel ' + channel + ' value is now ' + value +' total ' + motion_value);
   if (Math.abs(motion_value) > 10) {
     exec("export DISPLAY=:0 && xdotool mousemove 1 2");
@@ -496,7 +505,8 @@ gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 // 		console.error('Failed to resolve any Hue Bridges');
 // 		const ipAddress = null;
 // 	} else {
-// 		// Ignoring that you could have more than one Hue Bridge on a network as this is unlikely in 99.9% of users situations
+// 		// Ignore multiple Hue Bridges on the network as it is unlikely in most user scenarios. This line is commented out and not currently in use.
+
 // 		const ipAddress = discoveryResults[0].ipaddress;
 
 // 		hueApi.createLocal(ipAddress).connect(config.hue.username).then(authenticatedApi => {
