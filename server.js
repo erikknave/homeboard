@@ -1,40 +1,55 @@
-//Need to document this file!
+// This file sets up a server using Express and integrates various APIs and services like Sonos, Netatmo, and Tibber.
+// Load the express module to create and manage the HTTP server.
 var express = require("express");
+// Load the cors middleware to enable CORS with various options.
 const cors = require("cors");
+// Load the request module to make HTTP calls to external services.
 const request = require("request");
+// Destructure exec from child_process module for running system commands within Node.js.
 const { exec } = require("child_process");
+// Load the default configuration from the sample file. This configuration can be overridden by a custom config.
 var config = require("./config.sample");
 
 const fs = require("fs");
 if (fs.existsSync("./config.js")) {
-  //Load custom config file
+  // Check if a custom configuration file exists and load it, overriding the default configuration.
+//Load custom config file
   config = require("./config");
 }
 
+// Load the Sonos module to interact with Sonos speakers on the network.
 var Sonos = require("sonos");
 var sonos = null;
 
+// Load the netatmo module to interact with Netatmo weather stations and other devices.
 var netatmo = require("netatmo");
 var netatmoapi = null;
 if (config.netatmo.client_id) {
   netatmoapi = new netatmo(config.netatmo);
 }
 
+// Load the yahoo-finance module to fetch financial data and stock quotes.
 var yahooFinance = require("yahoo-finance");
+// Load the NewsAPI module to fetch news headlines and other news data from various sources.
 var NewsAPI = require("newsapi");
 var newsapi = null;
 if (config.newsapi.key) {
   newsapi = new NewsAPI(config.newsapi.key);
 }
 
+// Load the node-ical module to parse iCalendar (.ics) data from various sources.
 const ical = require("node-ical");
+// Load the moment-timezone module to manipulate and display dates and times in different timezones.
 const moment = require("moment-timezone");
 
+// Initialize the express application.
 var app = express();
+// Start the server listening on the port specified in the configuration. Log a message to the console once the server is ready.
 const server = app.listen(config.web.socket, function () {
   console.log("Server listening on port " + config.web.socket + ".");
 });
 
+// Discover Sonos devices on the network, specifically looking for devices that match the configured group name, and set up event listeners for track changes, play state, and volume changes.
 //Discover sonos kitchen device ip
 Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
   sonos = new Sonos.Sonos(device.host);
@@ -50,12 +65,14 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
           sonos.setSpotifyRegion(config.sonos.region);
 
           sonos.on("CurrentTrack", (track) => {
-            // console.log('Sonos Track changed to %s by %s', track)
+            // Event listener for Sonos track change. Emits the track information to all connected clients. The console.log statement is commented out.
+// console.log('Sonos Track changed to %s by %s', track)
             io.emit("SONOS_TRACK", track);
           });
 
           sonos.on("PlayState", (state) => {
-            // console.log('Sonos state changed to %s.', state)
+            // Event listener for Sonos play state change. Emits the new state to all connected clients. The console.log statement is commented out.
+// console.log('Sonos state changed to %s.', state)
             io.emit("SONOS_STATE", state);
           });
           sonos.on("Volume", (volume) => {
@@ -69,14 +86,17 @@ Sonos.DeviceDiscovery().once("DeviceAvailable", (device) => {
     });
 });
 
+// Initialize Socket.IO with the server instance to enable real-time bidirectional event-based communication.
 const io = require("socket.io")(server);
 io.set("origins", [
   "http://homeboard.local:8080",
   "http://localhost:8080",
   "http://192.168.68.134:8080",
-]); //erik: temporarily set to static ip on macbook-pro
+]); // Set CORS origin policy for Socket.IO to specific IPs for development purposes. This is a temporary setup as noted by the developer Erik.
+//erik: temporarily set to static ip on macbook-pro
 io.on("connection", function (socket) {
-  // console.log(socket.id)
+  // Event listener for new socket connections. Logs the socket ID for debugging purposes. The console.log statement is commented out.
+// console.log(socket.id)
   if (sonos) {
     sonos.currentTrack().then((track) => {
       io.emit("SONOS_TRACK", track);
@@ -232,7 +252,8 @@ io.on("connection", function (socket) {
     sonos
       .play(uri)
       .then((success) => {
-        // console.log('Playing uri')
+        // Attempt to play a specific URI on the Sonos device and log the result. The console.log statement is commented out.
+// console.log('Playing uri')
       })
       .catch((err) => {
         console.log("Error occurred %j", err);
@@ -243,7 +264,8 @@ io.on("connection", function (socket) {
     sonos
       .playTuneinRadio(station[0], station[1])
       .then((success) => {
-        // console.log('Playing radio')
+        // Attempt to play a radio station on the Sonos device and log the result. The console.log statement is commented out.
+// console.log('Playing radio')
       })
       .catch((err) => {
         console.log("Error occurred %j", err);
@@ -381,14 +403,16 @@ io.on("connection", function (socket) {
           ") }    }  } }"
       )
       .then((res) => {
-        // console.log(JSON.stringify(res, null, 2))
+        // Log the response from setting the thermostat state. The console.log statement is commented out.
+// console.log(JSON.stringify(res, null, 2))
       });
   });
 });
 
 // Get weather token
 var getWeatherToken = function (callback) {
-  //Fetch Netatmo public access token
+  // Function to fetch the Netatmo public access token by making an HTTP request to the Netatmo weather map URL.
+//Fetch Netatmo public access token
   return request("https://weathermap.netatmo.com/", (err, res, body) => {
     if (err) {
       return console.log(err);
@@ -429,7 +453,8 @@ var parseStationData = function (device) {
         json_data.outdoor = module.dashboard_data;
       }
     });
-    // console.log(json_data)
+    // Log the JSON data constructed from the Netatmo device's dashboard data. The console.log statement is commented out.
+// console.log(json_data)
     return json_data;
   } else {
     console.log("Invalid weather data");
@@ -445,7 +470,8 @@ var gpio = require("rpi-gpio");
 var last_motion_state = false;
 var motion_value = 0;
 gpio.on("change", function (channel, value) {
-  // Test by turning down screensaver to few sec
+  // Event listener for GPIO pin changes, used to detect motion. If significant motion is detected, simulate mouse movement to prevent screen saver activation. The console.log statement is commented out along with commands for setting up the display and screensaver.
+// Test by turning down screensaver to few sec
   // export DISPLAY=:0
   // xset s 2
   //console.log('Channel ' + channel + ' value is now ' + value +' total ' + motion_value);
@@ -462,6 +488,7 @@ gpio.on("change", function (channel, value) {
 });
 gpio.setup(11, gpio.DIR_IN, gpio.EDGE_BOTH);
 
+// This commented section contains a function to set light modes such as 'tv', 'dinner', 'evening', and 'off'. It interacts with a Philips Hue bridge to change light settings based on the mode. The actual implementation is commented out and needs to be completed or integrated.
 // var setLights = function(mode){
 // 	if (mode == 'tv'){
 
